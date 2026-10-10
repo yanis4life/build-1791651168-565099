@@ -1,0 +1,25 @@
+name: Build Expo
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - run: npm install --legacy-peer-deps || yarn install
+      - run: node -e "const fs=require('fs');const f='app.json';if(fs.existsSync(f)){const j=JSON.parse(fs.readFileSync(f));j.expo=j.expo||{};j.expo.android=j.expo.android||{};j.expo.android.package=j.expo.android.package||'com.example.app';fs.writeFileSync(f,JSON.stringify(j,null,2));console.log('patched app.json');}else{console.log('no app.json');}" && npx --yes expo prebuild --platform android --no-install
+      - run: |
+          cd android
+          chmod +x gradlew || true
+          ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: output
+          path: android/app/build/outputs/**/*.apk
